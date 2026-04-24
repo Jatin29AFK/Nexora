@@ -1,26 +1,52 @@
 # Nexora
 
-Nexora is a full-stack AI-powered study assistant that allows users to upload PDFs and web content, ask grounded questions, and generate quizzes from their learning material.
+<div align="center">
 
-It is designed as a polished study workspace with source-based retrieval, multiple answer styles, and quiz-based revision support.
+## Retrieval-Augmented AI Study Assistant for PDFs and Web Content
+
+Nexora is a RAG-powered learning workspace that ingests PDFs and web content, retrieves relevant source context for each query, and generates grounded answers and quizzes using Supabase and Groq.
+
+It is built around core **RAG concepts** such as source ingestion, chunking, retrieval, context-grounded generation, answer-mode control, and quiz creation from source-backed study material.
+
+![Frontend](https://img.shields.io/badge/Frontend-React-1f6feb)
+![Build](https://img.shields.io/badge/Build-Vite-8b5cf6)
+![UI](https://img.shields.io/badge/UI-CSS-06b6d4)
+![Backend](https://img.shields.io/badge/Backend-Supabase-16a34a)
+![Functions](https://img.shields.io/badge/Functions-Edge%20Functions-0f766e)
+![Database](https://img.shields.io/badge/Database-Postgres-334155)
+![AI](https://img.shields.io/badge/AI-Groq-f59e0b)
+![Concepts](https://img.shields.io/badge/Concepts-RAG-ef4444)
+![Deploy](https://img.shields.io/badge/Deploy-Vercel-black)
+
+</div>
+
+---
 
 ## Live Demo
-
-Add your deployed frontend link here:
 
 https://nexora-one-ashen.vercel.app
 
 ---
 
-## Architecture
+## Overview
 
-### Current Live Architecture
-- Frontend: Vercel
-- Database and backend services: Supabase
-- AI orchestration: Supabase Edge Functions + Groq
+Nexora helps users turn raw study material into a searchable, interactive learning workspace. Users can upload PDFs, add website content, ask grounded questions in different answer styles, and generate quizzes directly from their sources.
 
-### Legacy Backend
-This repository also contains an earlier FastAPI-based backend implementation for reference.
+Unlike generic chat workflows, Nexora is designed around a **retrieval-first pipeline**, where answers are generated using relevant retrieved context instead of relying only on free-form model output.
+
+---
+
+## Core RAG Concepts Implemented
+
+- **Source Ingestion** — accepts PDFs and web content as input sources
+- **Text Extraction** — parses PDF text in the browser and extracts readable content from URLs
+- **Chunking** — breaks source content into smaller retrievable units
+- **Retrieval** — fetches relevant chunks from stored source material
+- **Grounded Generation** — generates answers from retrieved context using Groq
+- **Answer Modes** — formats responses differently for revision and study use cases
+- **Quiz Generation** — creates source-based quizzes for active recall
+
+---
 
 ## Features
 
@@ -38,9 +64,20 @@ This repository also contains an earlier FastAPI-based backend implementation fo
 - Quiz generation from selected sources
 - Quiz scoring, explanations, weak-topic detection, and retake flow
 - Anonymous user sessions using Supabase Auth
-- Persistent source/chunk storage using Supabase
+- Persistent source and chunk storage using Supabase
 
----
+
+## Architecture
+
+### Current Live Architecture
+- **Frontend:** Vercel
+- **Database and backend services:** Supabase
+- **AI orchestration:** Supabase Edge Functions + Groq
+
+### Legacy Backend
+This repository also contains an earlier **FastAPI-based backend** implementation for reference in `backend-legacy/`.  
+The live version of Nexora no longer depends on that backend.
+
 
 ## Tech Stack
 
@@ -58,21 +95,6 @@ This repository also contains an earlier FastAPI-based backend implementation fo
 ### AI / Processing
 - Groq API
 - Browser-side PDF parsing using `pdfjs-dist`
-
----
-
-## Architecture
-
-### Current Architecture
-- **Frontend** is deployed on Vercel
-- **Backend services** are implemented using Supabase:
-  - Postgres for structured data
-  - Edge Functions for AI orchestration and URL extraction
-  - Auth for anonymous user sessions
-
-### Legacy Architecture
-This repository also contains the earlier FastAPI-based backend version for reference in `backend-legacy/` (if retained).  
-The live app no longer depends on that backend.
 
 ---
 
@@ -217,7 +239,6 @@ Deploy or maintain these functions:
 - Enhanced quiz generation and revision workflows
 
 # Author
-
 # Jatin Shukla
 
 
