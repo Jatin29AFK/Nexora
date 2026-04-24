@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Analytics } from "@vercel/analytics/react";
 import { ensureAnonymousSession } from "./lib/supabase";
 import { extractTextFromPdf } from "./lib/pdf";
@@ -14,7 +14,89 @@ import {
 } from "./lib/supabaseApi";
 import { scoreQuiz } from "./lib/quiz";
 
+function renderInlineMarkdown(text) {
+  return String(text)
+    .split(/(\*\*[^*]+\*\*)/g)
+    .map((part, index) => {
+      const boldMatch = part.match(/^\*\*([^*]+)\*\*$/);
+      if (boldMatch) {
+        return <strong key={index}>{boldMatch[1]}</strong>;
+      }
+      return part;
+    });
+}
+
+function normalizeHeadingLabel(label) {
+  return label.trim().toLowerCase() === "direct answer" ? "Answer" : label.trim();
+}
+
+function normalizeAnswerText(text) {
+  return String(text || "")
+    .replace(
+      /(^|\s+)\*\*([A-Z][A-Za-z /-]{1,50}):\*\*/g,
+      "\n\n**$2:**\n"
+    )
+    .replace(/\s+[*-]\s+(?=\*\*?[A-Za-z0-9])/g, "\n- ")
+    .trim();
+}
+
+function renderAnswerText(text) {
+  const lines = normalizeAnswerText(text).split(/\r?\n/);
+  const blocks = [];
+  let listItems = [];
+
+  function flushList() {
+    if (listItems.length === 0) return;
+
+    blocks.push(
+      <ul key={`list-${blocks.length}`} className="answer-list">
+        {listItems.map((item, index) => (
+          <li key={index}>{renderInlineMarkdown(item)}</li>
+        ))}
+      </ul>
+    );
+    listItems = [];
+  }
+
+  lines.forEach((line, index) => {
+    const trimmed = line.trim();
+
+    if (!trimmed) {
+      flushList();
+      return;
+    }
+
+    const listMatch = trimmed.match(/^[-*]\s+(.+)$/);
+    if (listMatch) {
+      listItems.push(listMatch[1]);
+      return;
+    }
+
+    flushList();
+
+    const headingMatch = trimmed.match(/^\*\*([^*]+):\*\*$/);
+    if (headingMatch) {
+      blocks.push(
+        <h4 key={`heading-${index}`} className="answer-heading">
+          {normalizeHeadingLabel(headingMatch[1])}
+        </h4>
+      );
+      return;
+    }
+
+    blocks.push(
+      <p key={`paragraph-${index}`} className="answer-paragraph">
+        {renderInlineMarkdown(trimmed)}
+      </p>
+    );
+  });
+
+  flushList();
+  return blocks.length > 0 ? blocks : text;
+}
+
 export default function App() {
+  const assistantIdRef = useRef(0);
   const [files, setFiles] = useState([]);
   const [documents, setDocuments] = useState([]);
   const [urlInput, setUrlInput] = useState("");
@@ -214,44 +296,55 @@ export default function App() {
   }
 
   function updateAssistantMessage(assistantId, updater) {
-  setMessages((prev) =>
-    prev.map((msg) => {
-      if (msg.id !== assistantId) return msg;
-      return typeof updater === "function" ? updater(msg) : { ...msg, ...updater };
-    })
-  );
-}
-
-function splitIntoChunks(text, wordsPerChunk = 12) {
-  const words = (text || "").split(/\s+/).filter(Boolean);
-  if (words.length === 0) return [];
-
-  const chunks = [];
-  for (let i = 0; i < words.length; i += wordsPerChunk) {
-    const piece = words.slice(i, i + wordsPerChunk).join(" ");
-    chunks.push(piece + (i + wordsPerChunk < words.length ? " " : ""));
+    setMessages((prev) =>
+      prev.map((msg) => {
+        if (msg.id !== assistantId) return msg;
+        return typeof updater === "function" ? updater(msg) : { ...msg, ...updater };
+      })
+    );
   }
-  return chunks;
-}
 
-async function streamTextLocally(assistantId, fullText, sources = []) {
-  const chunks = splitIntoChunks(fullText, 12);
+  function splitIntoChunks(text, minChunkLength = 60) {
+    const tokens = String(text || "").match(/\S+\s*/g) || [];
+    if (tokens.length === 0) return [];
 
-  for (const chunk of chunks) {
+    const chunks = [];
+    let currentChunk = "";
+
+    for (const token of tokens) {
+      currentChunk += token;
+
+      if (currentChunk.length >= minChunkLength) {
+        chunks.push(currentChunk);
+        currentChunk = "";
+      }
+    }
+
+    if (currentChunk) {
+      chunks.push(currentChunk);
+    }
+
+    return chunks;
+  }
+
+  async function streamTextLocally(assistantId, fullText, sources = []) {
+    const chunks = splitIntoChunks(fullText, 60);
+
+    for (const chunk of chunks) {
+      updateAssistantMessage(assistantId, (msg) => ({
+        ...msg,
+        text: (msg.text || "") + chunk,
+      }));
+
+      await new Promise((resolve) => setTimeout(resolve, 45));
+    }
+
     updateAssistantMessage(assistantId, (msg) => ({
       ...msg,
-      text: (msg.text || "") + chunk,
+      streaming: false,
+      sources,
     }));
-
-    await new Promise((resolve) => setTimeout(resolve, 45));
   }
-
-  updateAssistantMessage(assistantId, (msg) => ({
-    ...msg,
-    streaming: false,
-    sources,
-  }));
-}
 
   async function sendQuestion(questionText) {
   if (!questionText.trim()) {
@@ -267,7 +360,8 @@ async function streamTextLocally(assistantId, fullText, sources = []) {
   setError("");
   const currentQuestion = questionText;
   const recentHistory = buildRecentHistory(6);
-  const assistantId = `assistant-${Date.now()}-${Math.random()}`;
+  assistantIdRef.current += 1;
+  const assistantId = `assistant-${assistantIdRef.current}`;
 
   setMessages((prev) => [
     ...prev,
@@ -749,8 +843,18 @@ async function streamTextLocally(assistantId, fullText, sources = []) {
                   </div>
 
                   <div className={`bubble-text ${msg.streaming ? "streaming-text" : ""}`}>
-  {msg.text || (msg.streaming ? "Thinking..." : "")}
-</div>
+                    {msg.text ? (
+                      msg.role === "assistant" ? (
+                        <div className="answer-markdown">
+                          {renderAnswerText(msg.text)}
+                        </div>
+                      ) : (
+                        msg.text
+                      )
+                    ) : (
+                      msg.streaming ? "Thinking..." : ""
+                    )}
+                  </div>
 
                   {msg.sources && msg.sources.length > 0 && (
                     <div className="sources">

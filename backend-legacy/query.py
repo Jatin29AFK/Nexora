@@ -225,6 +225,7 @@ def get_answer_mode_settings(query: str, answer_mode: str):
             "style_instruction": """
 Give a short, direct answer in 2 to 4 sentences.
 No bullet points unless absolutely necessary.
+Do not add section labels.
 """,
             "max_tokens": 220,
         }
@@ -232,13 +233,22 @@ No bullet points unless absolutely necessary.
     if answer_mode == "detailed":
         return {
             "style_instruction": """
-Give a structured answer in this format:
-1. One-line direct answer
-2. One short explanation paragraph
-3. 4 to 6 bullet points of important details
-4. One small example if relevant
+Use this Markdown format exactly:
+**Answer:**
+One clear sentence that directly answers the question.
+
+**Explanation:**
+One short paragraph that explains the idea in simple language.
+
+**Key Points:**
+- 4 to 6 important details
+- Keep each bullet specific and useful
+
+**Example:**
+Add one small example only if it helps.
 
 Use simple language.
+Do not use "Direct Answer" as a heading.
 """,
             "max_tokens": 700,
         }
@@ -246,9 +256,11 @@ Use simple language.
     if answer_mode == "bullet":
         return {
             "style_instruction": """
-Answer only in bullet points.
+Use this Markdown format exactly:
+**Key Points:**
 Use 4 to 7 bullet points.
 Keep each bullet short but informative.
+Do not add any other section unless the question requires it.
 """,
             "max_tokens": 350,
         }
@@ -256,7 +268,16 @@ Keep each bullet short but informative.
     if answer_mode == "beginner":
         return {
             "style_instruction": """
-Explain for a beginner.
+Use this Markdown format exactly:
+**Simple Answer:**
+Give the answer in 1 to 2 beginner-friendly sentences.
+
+**Why It Matters:**
+Explain the idea in plain words.
+
+**Key Points:**
+- 3 to 5 simple bullets
+
 Use simple words.
 Avoid jargon where possible.
 If a technical term is necessary, explain it briefly.
@@ -267,10 +288,15 @@ If a technical term is necessary, explain it briefly.
     if answer_mode == "exam":
         return {
             "style_instruction": """
-Write in exam style:
-1. Definition / direct answer first
-2. Key points in bullets
-3. Keep it clean, crisp, and study-friendly
+Use this Markdown format exactly:
+**Definition:**
+Give the core definition or direct answer first.
+
+**Key Points:**
+- 4 to 6 crisp exam-ready points
+
+**Conclusion:**
+One short concluding sentence.
 """,
             "max_tokens": 550,
         }
@@ -283,12 +309,18 @@ Write in exam style:
     if wants_detail:
         return {
             "style_instruction": """
-Give a structured answer:
-1. One-line direct answer
-2. One short explanation paragraph
-3. 3 to 5 bullet points of key details
+Use this Markdown format exactly:
+**Answer:**
+One clear sentence that directly answers the question.
+
+**Explanation:**
+One short paragraph with the main idea.
+
+**Key Points:**
+- 3 to 5 key details
 
 Use simple language.
+Do not use "Direct Answer" as a heading.
 """,
             "max_tokens": 600,
         }
@@ -297,6 +329,7 @@ Use simple language.
         "style_instruction": """
 Give a clear, useful answer in 2 to 5 sentences.
 Use simple language.
+Do not add section labels unless the question asks for a structured answer.
 """,
         "max_tokens": 320,
     }
@@ -389,6 +422,8 @@ Rules:
 - Do not be vague.
 - If enough information is present, answer confidently and clearly.
 - If information is insufficient, say: "I couldn't find enough information in the uploaded PDFs or URLs."
+- Preserve Markdown line breaks and bullet lists.
+- Do not put the full answer into a single paragraph when the selected answer mode asks for sections or bullets.
 - {style_instruction}
 
 Recent conversation:
